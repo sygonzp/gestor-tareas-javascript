@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Agenda Académica UANL</title>
+    <style>
+        /* --- CSS: DISEÑO DE LA INTERFAZ --- */
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f4f7f6; padding: 20px; }
+        .container { max-width: 600px; margin: auto; background: white; padding: 20px; border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
+        h1 { color: #004a8f; text-align: center; }
+        .form-group { display: flex; gap: 10px; margin-bottom: 20px; }
+        input[type="text"] { flex: 1; padding: 10px; border: 1px solid #ccc; border-radius: 5px; }
+        button { padding: 10px 15px; background: #004a8f; color: white; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; }
+        button:hover { background: #003366; }
+        .filtros { display: flex; justify-content: space-between; margin-bottom: 15px; font-weight: bold; color: #555; }
+        select { padding: 5px; border-radius: 5px; }
+        ul { list-style: none; padding: 0; }
+        li { background: #f9f9f9; margin-bottom: 10px; padding: 15px; border-radius: 5px; display: flex; justify-content: space-between; align-items: center; border-left: 5px solid #004a8f; }
+        li.completada { opacity: 0.6; text-decoration: line-through; border-left-color: #28a745; }
+        .acciones button { padding: 5px 10px; font-size: 12px; margin-left: 5px; }
+        .btn-eliminar { background: #dc3545; }
+        .btn-eliminar:hover { background: #c82333; }
+        .btn-completar { background: #28a745; }
+        .btn-completar:hover { background: #218838; }
+        .error { color: red; font-size: 14px; display: none; margin-top: -15px; margin-bottom: 15px;}
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>📚 Gestor de Tareas Académicas</h1>
+        
+        <!-- Formulario sin recarga de página -->
+        <form id="formulario-tarea" class="form-group">
+            <input type="text" id="input-tarea" placeholder="Ej. PIA de Matemáticas FIME...">
+            <button type="submit">Agregar</button>
+        </form>
+        <p id="mensaje-error" class="error">¡Por favor escribe una tarea válida antes de agregar!</p>
+
+        <!-- Función adicional: Filtro y Contador -->
+        <div class="filtros">
+            <span id="contador-tareas">Total: 0 tareas</span>
+            <select id="filtro-tareas">
+                <option value="todas">Todas</option>
+                <option value="pendientes">Pendientes</option>
+                <option value="completadas">Completadas</option>
+            </select>
+        </div>
+
+        <!-- Contenedor del DOM manipulado dinámicamente -->
+        <ul id="lista-tareas"></ul>
+    </div>
+
+    <script>
+        /* --- JAVASCRIPT MODERNO (ES6+) --- */
+        
+        // 1. Recuperar información de localStorage o iniciar arreglo vacío
+        let tareas = JSON.parse(localStorage.getItem('tareas')) || [];
+
+        // Referencias al DOM (usando const)
+        const formulario = document.getElementById('formulario-tarea');
+        const inputTarea = document.getElementById('input-tarea');
+        const listaTareas = document.getElementById('lista-tareas');
+        const mensajeError = document.getElementById('mensaje-error');
+        const contadorTareas = document.getElementById('contador-tareas');
+        const filtroTareas = document.getElementById('filtro-tareas');
+
+        // 2. Función para renderizar (visualizar) tareas en el DOM (Arrow Function & Template Literals)
+        const renderizarTareas = (filtro = 'todas') => {
+            // Limpiar lista actual
+            listaTareas.innerHTML = '';
+            
+            // Función adicional: Filtrado con métodos de arreglos modernos (.filter)
+            let tareasFiltradas = tareas;
+            if (filtro === 'pendientes') tareasFiltradas = tareas.filter(t => !t.completada);
+            if (filtro === 'completadas') tareasFiltradas = tareas.filter(t => t.completada);
+
+            // Función adicional: Contador automático
+            contadorTareas.textContent = `Mostrando: ${tareasFiltradas.length} tarea(s)`;
+
+            // Iterar y manipular el DOM (.forEach)
+            tareasFiltradas.forEach((tarea) => {
+                const li = document.createElement('li');
+                if (tarea.completada) li.classList.add('completada');
+                
+                // Template literals (comillas invertidas)
+                li.innerHTML = `
+                    <span>${tarea.nombre}</span>
+                    <div class="acciones">
+                        <button class="btn-completar" onclick="alternarEstado(${tarea.id})">✔</button>
+                        <button class="btn-eliminar" onclick="eliminarTarea(${tarea.id})">✖</button>
+                    </div>
+                `;
+                listaTareas.appendChild(li);
+            });
+        };
+
+        // 3. Función para Guardar en localStorage
+        const guardarEnLocalStorage = () => {
+            localStorage.setItem('tareas', JSON.stringify(tareas));
+        };
+
+        // 4. Agregar nueva tarea (Eventos, Validación y Objetos)
+        formulario.addEventListener('submit', (e) => {
+            e.preventDefault(); // Evita que la página se recargue
+
+            const nombreTarea = inputTarea.value.trim();
+
+            // Validación de datos con mensaje claro
+            if (nombreTarea === '') {
+                mensajeError.style.display = 'block';
+                return;
+            }
+            mensajeError.style.display = 'none';
+
+            // Modelar datos con objeto JS
+            const nuevaTarea = {
+                id: Date.now(), // ID único
+                nombre: nombreTarea,
+                completada: false
+            };
+
+            // Agregar al arreglo
+            tareas.push(nuevaTarea);
+            
+            guardarEnLocalStorage();
+            renderizarTareas(filtroTareas.value);
+            
+            // Limpiar input
+            inputTarea.value = '';
+        });
+
+        // 5. Eliminar registro
+        const eliminarTarea = (id) => {
+            tareas = tareas.filter(tarea => tarea.id !== id);
+            guardarEnLocalStorage();
+            renderizarTareas(filtroTareas.value);
+        };
+
+        // 6. Editar registro (Marcar como completada/pendiente)
+        const alternarEstado = (id) => {
+            tareas = tareas.map(tarea => {
+                if (tarea.id === id) {
+                    return { ...tarea, completada: !tarea.completada };
+                }
+                return tarea;
+            });
+            guardarEnLocalStorage();
+            renderizarTareas(filtroTareas.value);
+        };
+
+        // 7. Evento para el filtro
+        filtroTareas.addEventListener('change', (e) => {
+            renderizarTareas(e.target.value);
+        });
+
+        // Inicializar la app renderizando los datos guardados
+        renderizarTareas();
+    </script>
+</body>
+</html>
